@@ -55,8 +55,10 @@ export class TTBoardDevice extends EventTarget {
     this.setData = setData;
   }
 
-  async sendCommand(command: string) {
-    this.setData('logs', [...this.data.logs, { text: command, sent: true }]);
+  async sendCommand(command: string, silent = false) {
+    if (!silent) {
+      this.setData('logs', [...this.data.logs, { text: command, sent: true }]);
+    }
     await this.writer?.write(`${command}\x04`);
   }
 
@@ -127,6 +129,7 @@ export class TTBoardDevice extends EventTarget {
         loadShuttle(value);
       }
     }
+    this.dispatchEvent(new CustomEvent('line', { detail: line }));
     if (name === 'protocol' && value !== '1') {
       alert('Warning: unsupported protocol version.');
     }

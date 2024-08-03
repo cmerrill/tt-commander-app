@@ -38,6 +38,7 @@ export class TTBoardDevice extends EventTarget {
   private readableStreamClosed?: Promise<void>;
   private writableStreamClosed?: Promise<void>;
   private writer?: WritableStreamDefaultWriter<string>;
+  private binaryWriter?: WritableStreamDefaultWriter<Uint8Array>;
 
   readonly data;
   private terminalListener: TerminalListener | null = null;
@@ -55,11 +56,36 @@ export class TTBoardDevice extends EventTarget {
     this.setData = setData;
   }
 
+  async writeText(data: string) {
+    if (this.binaryWriter) {
+      this.binaryWriter.releaseLock();
+      this.binaryWriter = undefined;
+    }
+    if (!this.writer) {
+      const textEncoderStream = new TextEncoderStream();
+      this.writer = textEncoderStream.writable.getWriter();
+      this.writableStreamClosed = textEncoderStream.readable.pipeTo(this.port.writable);
+    }
+    await this.writer.write(data);
+  }
+
+  async writeBinary(data: Uint8Array) {
+    if (this.writer) {
+      await this.writer?.close();
+      await this.writableStreamClosed;
+      this.writer = undefined;
+    }
+    if (!this.binaryWriter) {
+      this.binaryWriter = this.port.writable.getWriter();
+    }
+    await this.binaryWriter.write(data);
+  }
+
   async sendCommand(command: string, silent = false) {
     if (!silent) {
       this.setData('logs', [...this.data.logs, { text: command, sent: true }]);
     }
-    await this.writer?.write(`${command}\x04`);
+    await this.writeText(`${command}\x04`);
   }
 
   async selectDesign(index: number) {
@@ -77,7 +103,7 @@ export class TTBoardDevice extends EventTarget {
   async factorySetup() {
     this.setData('logs', [...this.data.logs, { text: '<<< factory setup >>>', sent: true }]);
     const script = factoryShuttleId() == 'tt03p5' ? tt03p5Factory : defaultFactory;
-    await this.writer?.write(script + '\x04'); // Send the factory-tt03p5.py script and excute it.
+    await this.writeText(script + '\x04'); // Send the factory-tt03p5.py script and excute it.
   }
 
   async bootloader() {
@@ -101,18 +127,18 @@ export class TTBoardDevice extends EventTarget {
   }
 
   async attachTerminal(listener: TerminalListener) {
-    this.writer?.write('\x02'); // Send Ctrl+B to exit RAW REPL mode.
+    this.writeText('\x02'); // Send Ctrl+B to exit RAW REPL mode.
     this.terminalListener = listener;
   }
 
   async detachTerminal() {
     this.terminalListener = null;
-    await this.writer?.write('\x03\x03'); // Send Ctrl+C twice to stop any running program.
-    await this.writer?.write('\x01'); // Send Ctrl+A to enter RAW REPL mode.
+    await this.writeText('\x03\x03'); // Send Ctrl+C twice to stop any running program.
+    await this.writeText('\x01'); // Send Ctrl+A to enter RAW REPL mode.
   }
 
   async terminalWrite(data: string) {
-    await this.writer?.write(data);
+    await this.writeText(data);
   }
 
   private processInput(line: string) {
@@ -211,13 +237,16 @@ export class TTBoardDevice extends EventTarget {
     await this.readableStreamClosed?.catch(() => {});
 
     try {
-      await this.writer?.write('\x02\x03\x03'); // Exit RAW REPL mode and stop any running code.
+      await this.writeText('\x02\x03\x03'); // Exit RAW REPL mode and stop any running code.
     } catch (e) {
       console.warn('Failed to exit RAW REPL mode:', e);
     }
 
     await this.writer?.close();
     await this.writableStreamClosed?.catch(() => {});
+    if (this.binaryWriter) {
+      await this.binaryWriter.close();
+    }
 
     await this.port.close();
     this.dispatchEvent(new Event('close'));

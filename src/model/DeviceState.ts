@@ -5,6 +5,11 @@ export const [deviceState, updateDeviceState] = createStore({
   clockHz: 0,
   uiInEnabled: false,
   uoOutEnabled: false,
+  uioEnabled: false,
+  uioOutEnabled: false,
   uiIn: [] as string[],
+  uioOE: [] as string[],
+  uioIn: [] as string[],
   uoOutValue: 0,
+  uioOutValue: 0,
 });

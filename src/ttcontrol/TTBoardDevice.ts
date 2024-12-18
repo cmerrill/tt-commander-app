@@ -102,6 +102,18 @@ export class TTBoardDevice extends EventTarget {
     await this.sendCommand('import machine; machine.bootloader()');
   }
 
+  async enableUIO(enable: boolean) {
+    await this.sendCommand(`enable_uio(${enable ? 'True' : 'False'})`);
+  }
+
+  async writeUIOOE(value: number) {
+    await this.sendCommand(`write_uio_oe(0b${value.toString(2).padStart(8, '0')})`);
+  }
+
+  async writeUIOIn(value: number) {
+    await this.sendCommand(`write_uio_in(0b${value.toString(2).padStart(8, '0')})`);
+  }
+
   async enableUIIn(enable: boolean) {
     await this.sendCommand(`enable_ui_in(${enable ? 'True' : 'False'})`);
   }
@@ -113,6 +125,11 @@ export class TTBoardDevice extends EventTarget {
   async monitorUoOut(enable: boolean) {
     const monitorFreq = 10;
     await this.sendCommand(`monitor_uo_out(${enable ? monitorFreq : '0'})`);
+  }
+
+  async monitorUioOut(enable: boolean) {
+    const monitorFreq = 10;
+    await this.sendCommand(`monitor_uio_out(${enable ? monitorFreq : '0'})`);
   }
 
   async stopAllMonitoring() {

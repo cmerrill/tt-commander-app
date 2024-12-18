@@ -18,6 +18,40 @@ export interface IInteractPanelProps {
 export function InteractPanel(props: IInteractPanelProps) {
   const [momentaryMode, setMomentaryMode] = createSignal(false);
 
+  const updateUioIn = async (setEnableToTrue = false) => {
+    const values = deviceState.uioIn;
+    const valuesOE = deviceState.uioOE;
+
+    let uioIn = 0;
+    for (let i = 0; i < 8; i++) {
+      if (values.includes(i.toString())) {
+        uioIn |= 1 << i;
+      }
+    }
+
+    let uioOE = 0;
+    for (let i = 0; i < 8; i++) {
+      if (valuesOE.includes(i.toString())) {
+        uioOE |= 1 << i;
+      }
+    }
+
+    await props.device.writeUIOOE(uioOE);
+    await props.device.writeUIOIn(uioIn);
+    if (setEnableToTrue) {
+      await props.device.enableUIO(true);
+    }
+  };
+
+  const toggleUIOInBit = (index: string) => {
+    if (deviceState.uioIn.includes(index.toString())) {
+      updateDeviceState({ uioIn: deviceState.uioIn.filter((x) => x !== index.toString()) });
+    } else {
+      updateDeviceState({ uioIn: [...deviceState.uioIn, index.toString()] });
+    }
+    updateUioIn();
+  };
+
   const updateUiIn = async (setEnableToTrue = false) => {
     const values = deviceState.uiIn;
     let uiIn = 0;
@@ -76,6 +110,13 @@ export function InteractPanel(props: IInteractPanelProps) {
     if (momentaryMode() !== event.shiftKey) {
       toggleUIInBit((event.target as HTMLButtonElement).value);
       updateUiIn();
+    }
+  };
+
+  const pointerUIINDownUpHandler = (event: PointerEvent) => {
+    if (momentaryMode() !== event.shiftKey) {
+      toggleUIOInBit((event.target as HTMLButtonElement).value);
+      updateUioIn();
     }
   };
 
@@ -172,13 +213,123 @@ export function InteractPanel(props: IInteractPanelProps) {
         </ToggleButtonGroup>
         <InteractSettingsMenu momentaryMode={momentaryMode()} setMomentaryMode={setMomentaryMode} />
       </Stack>
+      <Stack direction="row" spacing={1} marginTop={2} marginBottom={2}>
+        <FormControlLabel
+          sx={{ minWidth: 90 }}
+          control={
+            <Checkbox
+              checked={deviceState.uioEnabled}
+              onChange={(event, value) => {
+                updateDeviceState({ uioEnabled: value });
+                if (value) {
+                  void updateUioIn(true);
+                } else {
+                  void props.device.enableUIO(false);
+                }
+              }}
+            />
+          }
+          label="uio_oe"
+        />
+        <ToggleButtonGroup
+          color="primary"
+          disabled={!deviceState.uioEnabled}
+          value={deviceState.uioOE}
+          onChange={(event, values) => {
+            updateDeviceState({ uioOE: values });
+            updateUioIn();
+          }}
+        >
+          <ToggleButton value="0" sx={uiButtonStyle}>
+            0
+          </ToggleButton>
+          <ToggleButton value="1" sx={uiButtonStyle}>
+            1
+          </ToggleButton>
+          <ToggleButton value="2" sx={uiButtonStyle}>
+            2
+          </ToggleButton>
+          <ToggleButton value="3" sx={uiButtonStyle}>
+            3
+          </ToggleButton>
+          <ToggleButton value="4" sx={uiButtonStyle}>
+            4
+          </ToggleButton>
+          <ToggleButton value="5" sx={uiButtonStyle}>
+            5
+          </ToggleButton>
+          <ToggleButton value="6" sx={uiButtonStyle}>
+            6
+          </ToggleButton>
+          <ToggleButton value="7" sx={uiButtonStyle}>
+            7
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
+      <Stack direction="row" spacing={1} marginTop={2} marginBottom={2}>
+        <FormControlLabel
+          sx={{ minWidth: 90 }}
+          control={
+            <Checkbox
+              checked={deviceState.uioEnabled}
+              onChange={(event, value) => {
+                updateDeviceState({ uioEnabled: value });
+                if (value) {
+                  void updateUioIn(true);
+                } else {
+                  void props.device.enableUIO(false);
+                }
+              }}
+            />
+          }
+          label="uio_in"
+        />
+        <ToggleButtonGroup
+          color="primary"
+          disabled={!deviceState.uioEnabled}
+          value={deviceState.uioIn}
+          onChange={(event, values) => {
+            if (momentaryMode() == event.shiftKey) {
+              updateDeviceState({ uioIn: values });
+              updateUioIn();
+            }
+          }}
+          onPointerDown={pointerUIINDownUpHandler}
+          onPointerUp={pointerUIINDownUpHandler}
+        >
+          <ToggleButton value="0" sx={uiButtonStyle}>
+            0
+          </ToggleButton>
+          <ToggleButton value="1" sx={uiButtonStyle}>
+            1
+          </ToggleButton>
+          <ToggleButton value="2" sx={uiButtonStyle}>
+            2
+          </ToggleButton>
+          <ToggleButton value="3" sx={uiButtonStyle}>
+            3
+          </ToggleButton>
+          <ToggleButton value="4" sx={uiButtonStyle}>
+            4
+          </ToggleButton>
+          <ToggleButton value="5" sx={uiButtonStyle}>
+            5
+          </ToggleButton>
+          <ToggleButton value="6" sx={uiButtonStyle}>
+            6
+          </ToggleButton>
+          <ToggleButton value="7" sx={uiButtonStyle}>
+            7
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
       <Stack direction="row" spacing={1} marginBottom={2} alignItems="center">
         <FormControlLabel
           sx={{ minWidth: 90 }}
           control={
             <Checkbox
               checked={deviceState.uoOutEnabled}
-              onChange={(event, value) => {
+              onChange={(_event, value) => {
                 updateDeviceState({ uoOutEnabled: value });
                 props.device.monitorUoOut(value);
               }}

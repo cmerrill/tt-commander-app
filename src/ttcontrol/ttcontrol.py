@@ -30,6 +30,18 @@ from ttboard.mode import RPMode
 
 tt = DemoBoard.get()
 
+def enable_uio(enabled):
+    tt = DemoBoard.get()
+    if enabled:
+        stop_monitoring(tt.uio_in)
+    else:
+        start_monitoring(tt.uio_in, 10)
+
+def write_uio_oe(data):
+    DemoBoard.get().uio_oe_pico.value = data
+
+def write_uio_in(data):
+    DemoBoard.get().uio_in.value = data
 
 def enable_ui_in(enabled):
     tt = DemoBoard.get()
